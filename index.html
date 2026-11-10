@@ -12,12 +12,12 @@
     /* Critical Zero-Flash Boot Splash CSS — placed first in <head> */
     html, body { background-color: #07090e; margin: 0; padding: 0; }
     html[data-theme="light"], html[data-theme="light"] body { background-color: #dfe7f8; }
-    .splash { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; padding-bottom: 8.5vh; background: radial-gradient(120% 90% at 50% 0%, #141f38 0%, #090e1a 55%, #07090e 100%); transition: opacity 0.34s ease, visibility 0.34s; will-change: opacity; }
-    [data-theme="light"] .splash { background: radial-gradient(120% 90% at 50% 0%, #e8eefc 0%, #dfe7f8 55%, #cfdbf2 100%); }
+    .splash { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; padding-bottom: 8.5vh; background: radial-gradient(62% 44% at 16% 6%, rgba(64, 120, 255, 0.20) 0%, rgba(64, 120, 255, 0) 70%), radial-gradient(56% 42% at 88% 30%, rgba(124, 92, 255, 0.13) 0%, rgba(124, 92, 255, 0) 70%), radial-gradient(72% 52% at 50% 110%, rgba(48, 160, 190, 0.10) 0%, rgba(48, 160, 190, 0) 70%), radial-gradient(120% 90% at 50% 0%, #141f38 0%, #090e1a 55%, #07090e 100%); transition: opacity 0.34s ease, visibility 0.34s; will-change: opacity; }
+    [data-theme="light"] .splash { background: radial-gradient(62% 44% at 16% 6%, rgba(64, 120, 255, 0.16) 0%, rgba(64, 120, 255, 0) 70%), radial-gradient(56% 42% at 88% 30%, rgba(124, 92, 255, 0.10) 0%, rgba(124, 92, 255, 0) 70%), radial-gradient(72% 52% at 50% 110%, rgba(48, 160, 190, 0.08) 0%, rgba(48, 160, 190, 0) 70%), radial-gradient(120% 90% at 50% 0%, #e8eefc 0%, #dfe7f8 55%, #cfdbf2 100%); }
     .splash.bye { opacity: 0; visibility: hidden; pointer-events: none; }
     .splash-core { display: flex; flex-direction: column; align-items: center; gap: 14px; transition: transform 0.34s ease; }
     .splash.bye .splash-core { transform: scale(0.97); }
-    .splash-badge { position: relative; width: 74px; height: 74px; margin-bottom: 12px; border-radius: 20px; background: linear-gradient(145deg, #2f7bff, #0a5cff); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 18px 44px rgba(10, 92, 255, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.45); will-change: transform, opacity; }
+    .splash-badge { position: relative; width: 74px; height: 74px; margin-bottom: 12px; border-radius: 20px; background: linear-gradient(145deg, #2f7bff, #0a5cff); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 18px 44px rgba(10, 92, 255, 0.42), 0 0 88px rgba(47, 123, 255, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.45); will-change: transform, opacity; }
     .splash.play .splash-badge { animation: splashBadge 0.55s ease-out both; }
     /* No ring: Laurent found its expanding outline flashy, and
        the frozen ring baked into the startup images never
@@ -31,7 +31,7 @@
     .splash-sub { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.42em; margin-right: -0.42em; color: rgba(160, 178, 214, 0.85); will-change: transform, opacity; }
     .splash.play .splash-sub { animation: splashSub 0.62s ease 0.24s both; }
     [data-theme="light"] .splash-sub { color: rgba(70, 90, 130, 0.8); }
-    @keyframes splashBadge { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes splashBadge { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
     @keyframes splashWord { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes splashSub { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     /* Splash exit flight: overlay + wordmark fade while a clone of the
@@ -3877,6 +3877,19 @@
     #tunerPanel { min-height: 0; }
     #tunerPanel .data-card { flex: 1 1 auto; min-height: 0; }
     #tunerPanel .trace-wrap { flex: 1 1 auto; min-height: 52px; }
+    /* ==== v17: motion returns ====
+       The beat dot swells on the same --pulse envelope that
+       drives its light (fast strike, tempo decay): scale is
+       derived from the variable, so there is no extra JS and
+       the pop can never drift out of sync with the glow. */
+    .beat-pillar .beat-dot { transform: scale(calc(1 + var(--lit, 0) * 0.12)); }
+    /* While the metronome runs, START breathes almost
+       imperceptibly — alive, never busy. */
+    @keyframes metroRunBreathe { from { filter: brightness(1); } to { filter: brightness(1.09); } }
+    @media (prefers-reduced-motion: no-preference) {
+      #btnToggleMetro.primary-active { animation: metroRunBreathe 1.5s ease-in-out infinite alternate; }
+    }
+
     /* ==== v16: metro bottom, Laurent's reference frame ====
        Measured against the frame he approved: the lower half
        is one settled block — preset strip, option tiles, wide
@@ -6437,10 +6450,37 @@
       }
       haptic(8);
       uiSound(adding ? "switch" : "tick");
+      if (adding) burstStar(btn);
       renderFavoritesBar();
       requestAnimationFrame(() => saveCurrentUserProfile());
     }
-    function burstStar() {}
+    // Lighting a favorite earns a small celebration: the star pops
+    // and six sparks fly — once, on the tap, never ambient motion.
+    // (Restored in v17 at Laurent's request: a later refactor had
+    // stubbed this body out while its .burst-dot CSS survived.)
+    function burstStar(btn) {
+      if (!btn || !btn.animate) return;
+      btn.classList.add("burst-host");
+      btn.animate(
+        [{ transform: "scale(1)" }, { transform: "scale(1.28)", offset: 0.35 }, { transform: "scale(1)" }],
+        { duration: 300, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" }
+      );
+      for (let i = 0; i < 6; i++) {
+        const dot = document.createElement("span");
+        dot.className = "burst-dot";
+        btn.appendChild(dot);
+        const ang = (Math.PI * 2 * i) / 6 + 0.4;
+        const dist = 20 + (i % 2) * 6;
+        const anim = dot.animate(
+          [
+            { transform: "translate(-50%, -50%) translate(0px, 0px) scale(1)", opacity: 1 },
+            { transform: `translate(-50%, -50%) translate(${(Math.cos(ang) * dist).toFixed(1)}px, ${(Math.sin(ang) * dist).toFixed(1)}px) scale(0.4)`, opacity: 0 }
+          ],
+          { duration: 480, delay: 100, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "forwards" }
+        );
+        anim.onfinish = () => dot.remove();
+      }
+    }
 
     // Horizontal swipe on the tuner stage steps through favorites —
     // rehearsal-speed switching without opening the library. The
