@@ -3754,6 +3754,82 @@
       min-height: 70px;
     }
 
+    /* One size token for the dial and the fader rail (Laurent:
+       the dial deformed on his iPhone — width and height were two
+       separate vh clamps that an engine can evaluate apart. The
+       dial now takes its size from the width alone and derives
+       its height from aspect-ratio, so no viewport or engine can
+       pull it out of round; the fader rail shares the token, so
+       the pair stays exactly equal-height, as designed. The
+       rail's height is set plainly, with no competing flex-basis,
+       which removes the other cross-engine ambiguity.) */
+    .metro-center-stage { --dial-size: clamp(118px, 18.8vh, 178px); }
+    @media (max-height: 730px) {
+      .metro-center-stage { --dial-size: clamp(104px, 16.2vh, 140px); }
+    }
+    .workspace.mode-dual .metro-center-stage { --dial-size: clamp(94px, 13.5vh, 138px); }
+    .bpm-dial-ring {
+      width: var(--dial-size);
+      height: auto;
+      aspect-ratio: 1 / 1;
+      flex: none;
+    }
+    .bpm-fader-rail {
+      height: var(--dial-size);
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+    .workspace.mode-dual .bpm-fader-rail {
+      height: var(--dial-size);
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+    /* An older dual-mode rule sized the dial from its own clamp
+       (16.5vh), which broke the dial/fader equal-height pairing;
+       the dial takes the shared token here too. */
+    .workspace.mode-dual .bpm-dial-ring {
+      width: var(--dial-size);
+      height: auto;
+    }
+    /* Dual mode gives the metro panel only ~55% of the screen:
+       its full-size stack overflowed and the dial spilled over
+       the beat dots and the tempo presets. Compact the dual
+       stack (smaller dial token, tighter rows) and floor the
+       stage at the dial group's real height so nothing can
+       overlap — the app's first layout rule. */
+    .workspace.mode-dual .metro-center-stage { --dial-size: clamp(88px, 11.5vh, 108px); }
+    .workspace.mode-dual .metro-center-stage { min-height: calc(var(--dial-size) + 36px); }
+    .workspace.mode-dual #metroPanel { gap: 4px; }
+    .workspace.mode-dual .bpm-step-btn { height: 26px; }
+    .workspace.mode-dual .bento-slot > .menu-row.bento-tile { height: 40px; }
+    .workspace.mode-dual .bento-slot > .menu-row.bento-wide { height: 30px; }
+    /* Dual mode, second pass: half a screen per panel was still
+       not enough — the tuner's lower half (readouts, actions) was
+       clipped away entirely and the metro start button spilled
+       past the panel edge. In dual, the metro drops its
+       preset/ramp row and the tuner drops the pitch trace and
+       the idle hint (every control stays reachable in the full
+       modes); the gauge is capped so the whole stack fits. */
+    .workspace.mode-dual .bento-slot.bento-bottom { display: none; }
+    .workspace.mode-dual .metro-center-stage { --dial-size: clamp(84px, 10.5vh, 100px); }
+    .workspace.mode-dual #tunerPanel .trace-wrap { display: none; }
+    .workspace.mode-dual #tunerPanel .gauge-canvas-wrap { max-height: 118px; }
+    .workspace.mode-dual #tunerPanel .idle-hint { display: none; }
+    /* Dual on a short phone: the metro stack still overflowed by
+       one row — the start button sat entirely below the panel.
+       The tempo preset row also steps aside at this size (it is
+       one tap away in full metro mode) and the dial token drops
+       a notch, which brings the whole stack inside the panel. */
+    @media (max-height: 730px) {
+      .workspace.mode-dual .tempo-preset-row { display: none; }
+      .workspace.mode-dual .metro-center-stage { --dial-size: clamp(76px, 10vh, 92px); min-height: calc(var(--dial-size) + 32px); }
+    }
+    /* Tall screens: the beat matrix takes a share of the spare
+       height so the stage void does not pool in one place. */
+    @media (min-height: 860px) {
+      .beat-matrix { height: 88px; }
+    }
+
     /* 9. BPM Editor Popover & Tempo Ramp Bottom Sheet Polish */
     .bpm-editor {
       background: rgba(18, 24, 38, 0.95);
@@ -4870,7 +4946,7 @@
         <div class="metro-center-stage">
           <div class="bpm-main-col">
           <div class="bpm-dial-ring" id="bpmDial">
-            <svg class="bpm-ring-svg" viewBox="0 0 120 120">
+            <svg class="bpm-ring-svg" viewBox="0 0 120 120" preserveAspectRatio="xMidYMid meet">
               <circle cx="60" cy="60" r="52" fill="none" stroke="var(--dial-track)" stroke-width="6"></circle>
               <circle id="bpmProgressCircle" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="180"></circle>
             </svg>
