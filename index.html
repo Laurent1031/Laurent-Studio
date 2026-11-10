@@ -19,8 +19,12 @@
     .splash.bye .splash-core { transform: scale(0.97); }
     .splash-badge { position: relative; width: 74px; height: 74px; margin-bottom: 12px; border-radius: 20px; background: linear-gradient(145deg, #2f7bff, #0a5cff); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 18px 44px rgba(10, 92, 255, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.45); will-change: transform, opacity; }
     .splash.play .splash-badge { animation: splashBadge 0.55s ease-out both; }
-    .splash-ring { position: absolute; inset: 0; border-radius: 20px; border: 1.5px solid rgba(88, 156, 255, 0.55); pointer-events: none; will-change: transform, opacity; }
-    .splash.play .splash-ring { animation: splashRing 0.98s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both; }
+    /* No ring: Laurent found its expanding outline flashy, and
+       the frozen ring baked into the startup images never
+       matched the animated one at the hand-off — a visible
+       jump on every cold start. The badge now simply fades in
+       and flies; nothing pulses or expands. */
+    .splash-ring { display: none; }
     .splash-word { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 25px; font-weight: 800; letter-spacing: 0.34em; margin-right: -0.34em; color: #eef3ff; will-change: transform, opacity; }
     .splash.play .splash-word { animation: splashWord 0.68s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both; }
     [data-theme="light"] .splash-word { color: #12203a; }
@@ -28,7 +32,6 @@
     .splash.play .splash-sub { animation: splashSub 0.62s ease 0.24s both; }
     [data-theme="light"] .splash-sub { color: rgba(70, 90, 130, 0.8); }
     @keyframes splashBadge { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes splashRing { from { opacity: 0.65; transform: scale(0.94); } to { opacity: 0; transform: scale(1.42); } }
     @keyframes splashWord { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes splashSub { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     /* Splash exit flight: overlay + wordmark fade while a clone of the
@@ -3874,6 +3877,54 @@
     #tunerPanel { min-height: 0; }
     #tunerPanel .data-card { flex: 1 1 auto; min-height: 0; }
     #tunerPanel .trace-wrap { flex: 1 1 auto; min-height: 52px; }
+    /* ==== v13 polish (Laurent: premium finish, harmonious,
+       composition settled toward the middle) ====
+       Ten extra pixels of air above the header in portrait:
+       the layout no longer hugs the top edge — it breathes
+       and settles toward the middle of the screen. (The
+       shell's effective top padding is its safe-area rule in
+       the adaptation section, hence the body-qualified
+       selector; the workspace's flexible areas absorb it.) */
+    @media (orientation: portrait) {
+      body .app-shell { padding-top: calc(max(8px, env(safe-area-inset-top, 0px)) + 10px); }
+    }
+    /* Edge colours harmonised with the ambient wash (dark
+       theme): panel and tile rims take a blue tint instead of
+       a neutral white glare, so the surfaces sit IN the scene
+       rather than being outlined against it. */
+    [data-theme="dark"] .glass-card { border-color: rgba(126, 172, 255, 0.14); }
+    [data-theme="dark"] .bento-slot > .menu-row { border-color: rgba(126, 172, 255, 0.10); }
+    /* The two wide option tiles adopt the same card grammar
+       as the three above them — label top, value bottom-left,
+       chevron top-right — one consistent grid language. Tall
+       screens only; compact heights keep the wide rows. */
+    @media (min-height: 731px) {
+      .bento-slot.bento-bottom > .menu-row.bento-wide {
+        position: relative; height: 50px; padding: 7px 10px 6px;
+        flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 2px;
+      }
+      .bento-slot.bento-bottom > .menu-row.bento-wide > .menu-chev { position: absolute; top: 6px; right: 8px; }
+      .bento-slot.bento-bottom > .menu-row.bento-wide .menu-row-value {
+        margin-left: 0; font-size: 13.5px; font-weight: 800; color: var(--text-primary); line-height: 1.15; max-width: 100%;
+      }
+    }
+    /* Primary action buttons gain material depth: a lit top
+       edge and a soft floor shadow. Active states keep their
+       own higher-specificity colours. */
+    .action-btn { box-shadow: inset 0 1px 0 rgba(165, 200, 255, 0.13), 0 12px 26px rgba(2, 6, 16, 0.32); }
+    /* The tempo fader's fill is a lit material now, not a flat
+       white slab (dark theme; the light theme inverts it). */
+    [data-theme="dark"] .bpm-fader-fill {
+      background: linear-gradient(180deg, #ffffff 0%, #e9effc 55%, #ccdaf6 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -10px 16px rgba(30, 60, 120, 0.18);
+    }
+    /* A soft halo behind the dial anchors the stage. */
+    .metro-center-stage { position: relative; }
+    .metro-center-stage::before {
+      content: ""; position: absolute; left: 5%; top: 50%; width: 62%; aspect-ratio: 1/1;
+      transform: translateY(-50%); border-radius: 50%; pointer-events: none;
+      background: radial-gradient(closest-side, rgba(56, 132, 255, 0.09), rgba(56, 132, 255, 0) 72%);
+    }
 
     /* 9. BPM Editor Popover & Tempo Ramp Bottom Sheet Polish */
     .bpm-editor {
@@ -5621,8 +5672,12 @@
       const bootStart = winStart;
       let slowWins = 0;
       let settled = false;
+      let samplerDropped = false;
+      let samplerPrevTier = perfTier;
       const stepDown = () => {
         const rootEl = document.documentElement;
+        samplerDropped = true;
+        samplerPrevTier = perfTier;
         if (perfTier === "high" && IS_ANDROID) {
           perfTier = "mid";
           rootEl.classList.replace("tier-high", "tier-mid");
@@ -5661,6 +5716,39 @@
       // background, pulses and glow all switched off) — the device
       // was never actually slow.
       setTimeout(() => requestAnimationFrame(tick), 1200);
+      // Recovery: a sampler step-down measures boot jank, not the
+      // device — and it used to strand the session in lite mode
+      // (ambient background off, the whole top of the screen gone
+      // black) even on flagship hardware. Twelve seconds in, if
+      // frames are running fast again, hand the tier back.
+      setTimeout(() => {
+        if (!samplerDropped || document.hidden) return;
+        let rFrames = 0;
+        let rSlow = 0;
+        let rWin = performance.now();
+        const rT0 = rWin;
+        const rTick = (now) => {
+          if (document.hidden) return;
+          rFrames++;
+          if (now - rWin >= 1000) {
+            const fps = (rFrames * 1000) / (now - rWin);
+            if (fps < 50) rSlow++;
+            rFrames = 0;
+            rWin = now;
+            if (now - rT0 > 2600) {
+              if (rSlow === 0) {
+                const rootEl = document.documentElement;
+                rootEl.classList.remove("tier-low", "tier-mid", "tier-high", "is-lite-glass");
+                rootEl.classList.add("tier-" + samplerPrevTier);
+                perfTier = samplerPrevTier;
+              }
+              return;
+            }
+          }
+          requestAnimationFrame(rTick);
+        };
+        requestAnimationFrame(rTick);
+      }, 12000);
     });
 
     /* =========================================================================
@@ -11502,8 +11590,11 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
           });
         }
         const flyAnim = clone.animate(frames, { duration: 640, easing: "linear", fill: "forwards" });
-        faces[0].animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, delay: 180, easing: "ease", fill: "forwards" });
-        faces[1].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, delay: 180, easing: "ease", fill: "forwards" });
+        // The two faces crossfade only in the last 150ms, at the
+        // destination: a 420ms mid-flight crossfade read as a
+        // flash of the badge changing colour in mid-air.
+        faces[0].animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, delay: 470, easing: "ease", fill: "forwards" });
+        faces[1].animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, delay: 470, easing: "ease", fill: "forwards" });
         let landed = false;
         const land = () => {
           if (landed) return;

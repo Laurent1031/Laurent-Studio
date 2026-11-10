@@ -5,7 +5,7 @@
    launches work reliably. Navigation fetches revalidate with the
    server (no-cache) so an HTTP-cached stale page can never shadow
    a fresh deploy. */
-const CACHE = "laurent-tuner-v12";
+const CACHE = "laurent-tuner-v13";
 const STATIC = [
   "./",
   "./index.html",
