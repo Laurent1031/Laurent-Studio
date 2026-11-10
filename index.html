@@ -55,10 +55,10 @@
       docEl.style.backgroundColor = light ? "#dfe7f8" : "#07090e";
       docEl.style.colorScheme = light ? "light" : "dark";
     } catch {}
-    // Anchor the layout height to the physical screen (used only by
-    // the iPhone Safari-tab rules): browser chrome never changes
-    // screen.*, so the app can lay out at the full screen height in
-    // a Safari tab exactly as it does standalone. Recomputed on
+    // Anchor a screen-height variable to the physical screen:
+    // browser chrome never changes screen.*, so iOS can size key
+    // objects (the metronome dial) from it and keep them the same
+    // size in a Safari tab as standalone. Recomputed on
     // orientation change; chrome show/hide cannot move it.
     try {
       const setAppH = () => {
@@ -3852,21 +3852,18 @@
        dial group centred inside it. */
     #metroPanel { justify-content: space-between; }
     .metro-center-stage { flex: 0 1 auto; }
-    /* iPhone Safari tabs only: lay out against the FULL screen
-       height (--app-h, set from screen.* before first paint),
-       never the height the floating toolbar leaves visible —
-       Laurent: the long rendering is the correct one, and it
-       must be identical wherever the app is opened, with no
-       object compressed or shrunk. Standalone and in-app
-       webviews already get the full height from the viewport
-       and are untouched (an earlier lvh attempt overshot the
-       standalone shell and clipped the tuner's last row);
-       Android and iPad keep their existing sizing. The dial
-       token derives from the same anchor so the dial is the
-       same size in a tab as it is standalone. */
-    html.is-safari-tab, html.is-safari-tab body { height: var(--app-h, 100dvh); }
-    html.is-safari-tab .app-shell { height: var(--app-h, 100dvh); }
-    html.is-safari-tab .metro-center-stage { --dial-size: clamp(118px, calc(var(--app-h, 100dvh) * 0.188), 178px); }
+    /* Layout contract (v12, Laurent delegated the call): the
+       shell always fits the VISIBLE viewport, so every control
+       stays reachable in every context — a full-screen-height
+       shell in a Safari tab pushed START and the tuner actions
+       under the floating bar with no way to scroll to them,
+       which he judged worse than the original. What does NOT
+       shrink is the objects: on iOS the dial token is anchored
+       to the physical screen height (--app-h), so the dial is
+       the same 164px in a Safari tab as standalone; only the
+       air between sections and the flexible canvas areas
+       (pitch trace, gauge stage) absorb height differences. */
+    html.is-ios .metro-center-stage { --dial-size: clamp(148px, calc(var(--app-h, 100dvh) * 0.188), 178px); }
     /* The tuner stack must fit at ANY shell height: its data
        card and pitch trace were flex-shrink: 0, so when the
        available height fell a few dozen pixels short (an
@@ -5563,15 +5560,6 @@
     const IS_ANDROID = /Android/i.test(UA_STR);
     const IS_IOS = /iPhone|iPad|iPod/i.test(UA_STR) || (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1);
     if (IS_IOS) document.documentElement.classList.add("is-ios");
-    /* A real Safari tab (Version/ token present) on iPhone: its
-       dvh tracks the floating toolbar, which squeezed the whole
-       layout. Standalone apps and in-app webviews have no
-       Version/ token and keep the viewport height, which is
-       already the full height there. iPad Safari keeps its
-       viewport too (its toolbar overlays the top, not the
-       layout height). */
-    const IS_SAFARI_TAB = /iPhone|iPod/i.test(UA_STR) && /Version\/[\d.]+/.test(UA_STR) && /Safari/.test(UA_STR);
-    if (IS_SAFARI_TAB) document.documentElement.classList.add("is-safari-tab");
     let androidWeakHw = false;
     let androidBtCompMs = 0;
     const IS_INAPP_BROWSER = IS_ANDROID && /(MicroMessenger|QQ\/|QQBrowser|Weibo|DingTalk|AlipayClient|Aweme|bytedancewebview|baiduboxapp|Kwai)/i.test(UA_STR);
