@@ -5676,9 +5676,10 @@
       if (IS_ANDROID) {
         if (cores <= 4 || (mem > 0 && mem <= 2)) perfTier = "low";
         else if (cores <= 6 || (mem > 0 && mem <= 3)) perfTier = "mid";
-      } else if (/iPhone|iPad|iPod/i.test(UA_STR)) {
-        if (cores <= 4) perfTier = "low";
       }
+      // iOS always starts at the full tier (v15): core-count
+      // reports there are unreliable, and a low start would
+      // strand the ambient scene off with no path back.
       const rootEl = document.documentElement;
       rootEl.classList.add("tier-" + perfTier);
       if (perfTier === "low") rootEl.classList.add("is-lite-glass");
@@ -5697,6 +5698,13 @@
       let samplerDropped = false;
       let samplerPrevTier = perfTier;
       const stepDown = () => {
+        // iOS never steps down (Laurent, v15): every slow reading
+        // on his iPhones has been cold-start jank on flagship
+        // hardware, and the cost of a wrong drop is the whole
+        // scene — ambient wash gone, top of the screen black.
+        // The scene he approved is the only scene on iOS; the
+        // sampler remains Android's safety valve only.
+        if (IS_IOS) return;
         const rootEl = document.documentElement;
         samplerDropped = true;
         samplerPrevTier = perfTier;
@@ -5743,8 +5751,18 @@
       // (ambient background off, the whole top of the screen gone
       // black) even on flagship hardware. Twelve seconds in, if
       // frames are running fast again, hand the tier back.
-      setTimeout(() => {
-        if (!samplerDropped || document.hidden) return;
+      // v15 hardening: the restore pass used to demand a perfect
+      // 50fps across every window and fired exactly once — on a
+      // 60Hz screen one ordinary hiccup (or the page being hidden
+      // at that second) stranded the session in lite mode for
+      // good. Now a window only counts as slow below 30fps, and
+      // a failed attempt retries instead of giving up.
+      const attemptRestore = (triesLeft) => {
+        if (!samplerDropped) return;
+        if (document.hidden) {
+          if (triesLeft > 0) setTimeout(() => attemptRestore(triesLeft - 1), 15000);
+          return;
+        }
         let rFrames = 0;
         let rSlow = 0;
         let rWin = performance.now();
@@ -5754,7 +5772,7 @@
           rFrames++;
           if (now - rWin >= 1000) {
             const fps = (rFrames * 1000) / (now - rWin);
-            if (fps < 50) rSlow++;
+            if (fps < 30) rSlow++;
             rFrames = 0;
             rWin = now;
             if (now - rT0 > 2600) {
@@ -5763,6 +5781,9 @@
                 rootEl.classList.remove("tier-low", "tier-mid", "tier-high", "is-lite-glass");
                 rootEl.classList.add("tier-" + samplerPrevTier);
                 perfTier = samplerPrevTier;
+                samplerDropped = false;
+              } else if (triesLeft > 0) {
+                setTimeout(() => attemptRestore(triesLeft - 1), 15000);
               }
               return;
             }
@@ -5770,7 +5791,8 @@
           requestAnimationFrame(rTick);
         };
         requestAnimationFrame(rTick);
-      }, 12000);
+      };
+      setTimeout(() => attemptRestore(2), 12000);
     });
 
     /* =========================================================================
