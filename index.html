@@ -55,6 +55,20 @@
       docEl.style.backgroundColor = light ? "#dfe7f8" : "#07090e";
       docEl.style.colorScheme = light ? "light" : "dark";
     } catch {}
+    // Anchor the layout height to the physical screen (used only by
+    // the iPhone Safari-tab rules): browser chrome never changes
+    // screen.*, so the app can lay out at the full screen height in
+    // a Safari tab exactly as it does standalone. Recomputed on
+    // orientation change; chrome show/hide cannot move it.
+    try {
+      const setAppH = () => {
+        const portrait = window.innerHeight >= window.innerWidth;
+        const full = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+        if (full > 0) document.documentElement.style.setProperty("--app-h", full + "px");
+      };
+      setAppH();
+      window.addEventListener("orientationchange", () => setTimeout(setAppH, 80));
+    } catch {}
   </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230a84ff'/%3E%3Cstop offset='1' stop-color='%235e5ce6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='15' fill='url(%23g)'/%3E%3Cpath fill='%23ffffff' d='M40 12v24.3c-.9-.5-1.9-.8-3-.8-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6V22h9V12H40z' transform='translate(-4 2) scale(0.94)'/%3E%3C/svg%3E" />
   <link rel="manifest" href="manifest.webmanifest" />
@@ -3838,19 +3852,31 @@
        dial group centred inside it. */
     #metroPanel { justify-content: space-between; }
     .metro-center-stage { flex: 0 1 auto; }
-    /* iOS: always lay out against the FULL screen height (the
-       large viewport), never the height Safari's floating
-       toolbar leaves visible. In a browser tab, dvh and vh
-       track that shrunken strip, so the whole app — dial
-       included — rendered in a short, squeezed form next to
-       the full-height standalone rendering Laurent calls the
-       correct one. lvh is the full screen height in every
-       context; in the standalone app and in-app webviews it
-       equals the current height, so nothing changes there,
-       and Android keeps its own sizing entirely. */
-    html.is-ios, html.is-ios body { height: 100lvh; }
-    html.is-ios .app-shell { height: 100lvh; }
-    html.is-ios .metro-center-stage { --dial-size: clamp(118px, 18.8lvh, 178px); }
+    /* iPhone Safari tabs only: lay out against the FULL screen
+       height (--app-h, set from screen.* before first paint),
+       never the height the floating toolbar leaves visible —
+       Laurent: the long rendering is the correct one, and it
+       must be identical wherever the app is opened, with no
+       object compressed or shrunk. Standalone and in-app
+       webviews already get the full height from the viewport
+       and are untouched (an earlier lvh attempt overshot the
+       standalone shell and clipped the tuner's last row);
+       Android and iPad keep their existing sizing. The dial
+       token derives from the same anchor so the dial is the
+       same size in a tab as it is standalone. */
+    html.is-safari-tab, html.is-safari-tab body { height: var(--app-h, 100dvh); }
+    html.is-safari-tab .app-shell { height: var(--app-h, 100dvh); }
+    html.is-safari-tab .metro-center-stage { --dial-size: clamp(118px, calc(var(--app-h, 100dvh) * 0.188), 178px); }
+    /* The tuner stack must fit at ANY shell height: its data
+       card and pitch trace were flex-shrink: 0, so when the
+       available height fell a few dozen pixels short (an
+       in-app webview, a shorter phone), the stack overflowed
+       and the bottom action row was cut in half. The trace is
+       the designed flexible area — it now shrinks down to a
+       52px floor; every control keeps its full size. */
+    #tunerPanel { min-height: 0; }
+    #tunerPanel .data-card { flex: 1 1 auto; min-height: 0; }
+    #tunerPanel .trace-wrap { flex: 1 1 auto; min-height: 52px; }
 
     /* 9. BPM Editor Popover & Tempo Ramp Bottom Sheet Polish */
     .bpm-editor {
@@ -5537,6 +5563,15 @@
     const IS_ANDROID = /Android/i.test(UA_STR);
     const IS_IOS = /iPhone|iPad|iPod/i.test(UA_STR) || (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1);
     if (IS_IOS) document.documentElement.classList.add("is-ios");
+    /* A real Safari tab (Version/ token present) on iPhone: its
+       dvh tracks the floating toolbar, which squeezed the whole
+       layout. Standalone apps and in-app webviews have no
+       Version/ token and keep the viewport height, which is
+       already the full height there. iPad Safari keeps its
+       viewport too (its toolbar overlays the top, not the
+       layout height). */
+    const IS_SAFARI_TAB = /iPhone|iPod/i.test(UA_STR) && /Version\/[\d.]+/.test(UA_STR) && /Safari/.test(UA_STR);
+    if (IS_SAFARI_TAB) document.documentElement.classList.add("is-safari-tab");
     let androidWeakHw = false;
     let androidBtCompMs = 0;
     const IS_INAPP_BROWSER = IS_ANDROID && /(MicroMessenger|QQ\/|QQBrowser|Weibo|DingTalk|AlipayClient|Aweme|bytedancewebview|baiduboxapp|Kwai)/i.test(UA_STR);
