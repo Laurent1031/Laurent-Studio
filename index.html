@@ -3877,6 +3877,11 @@
     #tunerPanel { min-height: 0; }
     #tunerPanel .data-card { flex: 1 1 auto; min-height: 0; }
     #tunerPanel .trace-wrap { flex: 1 1 auto; min-height: 52px; }
+    /* ==== v14: mic permission guide sheet ==== */
+    .mic-guide-lead { font-size: 13px; line-height: 1.65; color: var(--text-secondary); margin: 0 0 12px; }
+    .mic-guide-step { font-size: 13px; line-height: 1.5; color: var(--text-primary); margin: 0 0 8px; }
+    #btnMicRecheck { width: 100%; margin-top: 14px; padding: 13px 16px; }
+
     /* ==== v13 polish (Laurent: premium finish, harmonious,
        composition settled toward the middle) ====
        Ten extra pixels of air above the header in portrait:
@@ -3894,20 +3899,11 @@
        rather than being outlined against it. */
     [data-theme="dark"] .glass-card { border-color: rgba(126, 172, 255, 0.14); }
     [data-theme="dark"] .bento-slot > .menu-row { border-color: rgba(126, 172, 255, 0.10); }
-    /* The two wide option tiles adopt the same card grammar
-       as the three above them — label top, value bottom-left,
-       chevron top-right — one consistent grid language. Tall
-       screens only; compact heights keep the wide rows. */
-    @media (min-height: 731px) {
-      .bento-slot.bento-bottom > .menu-row.bento-wide {
-        position: relative; height: 50px; padding: 7px 10px 6px;
-        flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 2px;
-      }
-      .bento-slot.bento-bottom > .menu-row.bento-wide > .menu-chev { position: absolute; top: 6px; right: 8px; }
-      .bento-slot.bento-bottom > .menu-row.bento-wide .menu-row-value {
-        margin-left: 0; font-size: 13.5px; font-weight: 800; color: var(--text-primary); line-height: 1.15; max-width: 100%;
-      }
-    }
+    /* v14 (Laurent's call): the two wide option tiles keep
+       their horizontal form — label left, value right, the
+       same full-width rhythm as the START button below them.
+       (v13's column unification reverted by his verdict: the
+       wide-row bottom reads calmer and more harmonious.) */
     /* Primary action buttons gain material depth: a lit top
        edge and a soft floor shadow. Active states keep their
        own higher-specificity colours. */
@@ -5250,6 +5246,32 @@
             <button class="action-btn primary-active" id="btnSaveCustomInst" style="flex:1.4;">保存自订乐器</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MIC PERMISSION GUIDE ==================== -->
+  <div class="modal-backdrop" id="micGuideModal">
+    <div class="glass-card sheet-card">
+      <div class="sheet-header">
+        <span class="sheet-title">麦克风权限已被拒绝</span>
+        <button class="icon-btn" id="btnCloseMicGuide">知道了</button>
+      </div>
+      <div class="sheet-body">
+        <p class="mic-guide-lead">系统已记住这次拒绝，之后点击不会再弹出申请框——这是 iOS 的规则，网页无法绕过。按下面步骤重新允许一次，之后每次点击都会直接开启，不用再申请。</p>
+        <div id="micGuideSafari">
+          <p class="mic-guide-step">1. 点击网址列左侧的「网站设置」图标</p>
+          <p class="mic-guide-step">2. 选择「网站设置」</p>
+          <p class="mic-guide-step">3. 把「麦克风」设为「允许」</p>
+          <p class="mic-guide-step">4. 回到本页，点击下方「重新检测」</p>
+        </div>
+        <div id="micGuideStandalone" style="display: none;">
+          <p class="mic-guide-step">1. 打开 iPhone「设置」</p>
+          <p class="mic-guide-step">2. 找到「LAURENT · Acoustic Reference」；若没有此项，进入「Safari」→「麦克风」</p>
+          <p class="mic-guide-step">3. 开启麦克风权限</p>
+          <p class="mic-guide-step">4. 回到本 App，点击下方「重新检测」</p>
+        </div>
+        <button class="action-btn" id="btnMicRecheck"><span>重新检测</span></button>
       </div>
     </div>
   </div>
@@ -8414,6 +8436,32 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
       return sampleRate / refinedTau;
     }
 
+    // Permission state, kept apart from a single request's outcome:
+    // a DISMISSED prompt may be summoned again by the next tap, but a
+    // RECORDED denial never re-prompts on iOS — the browser fails
+    // every later request instantly and silently. toggleMic's error
+    // path asks here which of the two just happened.
+    async function micPermissionState() {
+      try {
+        if (!navigator.permissions || !navigator.permissions.query) return "unknown";
+        const r = await navigator.permissions.query({ name: "microphone" });
+        return (r && r.state) || "unknown";
+      } catch { return "unknown"; }
+    }
+
+    function openMicGuide() {
+      const bd = document.getElementById("micGuideModal");
+      if (!bd) return;
+      const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+      const sEl = document.getElementById("micGuideSafari");
+      const aEl = document.getElementById("micGuideStandalone");
+      if (sEl && aEl) {
+        sEl.style.display = standalone ? "none" : "";
+        aEl.style.display = standalone ? "" : "none";
+      }
+      requestAnimationFrame(() => bd.classList.add("open"));
+    }
+
     async function toggleMic() {
       const btn = document.getElementById("btnToggleMic");
       const immBtn = document.getElementById("btnImmToggleMic");
@@ -8512,7 +8560,16 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           showToast(tStr(IS_INAPP_BROWSER ? "内置浏览器无法使用麦克风，请从菜单选择在浏览器中打开" : "当前环境无法使用麦克风，请用 HTTPS 或本地方式打开"));
         } else if (errName === "NotAllowedError" || errName === "PermissionDeniedError") {
-          showToast(tStr("麦克风权限未开启，可随时再次点击「开启麦克风校音」申请或在网址列允许权限"));
+          // Dismissal vs denial need different answers: a dismissed
+          // prompt comes back on the next tap (light toast), a
+          // recorded denial never prompts again — open the guide
+          // that walks the permission back on, with a recheck
+          // button that lands straight in toggleMic once it is.
+          if ((await micPermissionState()) === "denied") {
+            openMicGuide();
+          } else {
+            showToast(tStr("麦克风权限未开启，可随时再次点击「开启麦克风校音」申请或在网址列允许权限"));
+          }
         } else if (errName === "NotFoundError" || errName === "OverconstrainedError") {
           showToast(tStr("没有找到可用的麦克风设备"));
         } else if (errName === "NotReadableError") {
@@ -8531,6 +8588,17 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
     function ensureMicOn() {}
 
     document.getElementById("btnToggleMic").addEventListener("click", toggleMic);
+
+    document.getElementById("btnCloseMicGuide")?.addEventListener("click", () => {
+      closeSheet(document.getElementById("micGuideModal"));
+    });
+    document.getElementById("micGuideModal")?.addEventListener("click", (e) => {
+      if (e.target === e.currentTarget) closeSheet(e.currentTarget);
+    });
+    document.getElementById("btnMicRecheck")?.addEventListener("click", () => {
+      closeSheet(document.getElementById("micGuideModal"));
+      toggleMic();
+    });
 
     // If iOS left the context suspended after the first unlock attempt,
     // the next touch anywhere retries the resume while the mic is live,
