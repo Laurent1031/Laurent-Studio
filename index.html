@@ -3838,6 +3838,19 @@
        dial group centred inside it. */
     #metroPanel { justify-content: space-between; }
     .metro-center-stage { flex: 0 1 auto; }
+    /* iOS: always lay out against the FULL screen height (the
+       large viewport), never the height Safari's floating
+       toolbar leaves visible. In a browser tab, dvh and vh
+       track that shrunken strip, so the whole app — dial
+       included — rendered in a short, squeezed form next to
+       the full-height standalone rendering Laurent calls the
+       correct one. lvh is the full screen height in every
+       context; in the standalone app and in-app webviews it
+       equals the current height, so nothing changes there,
+       and Android keeps its own sizing entirely. */
+    html.is-ios, html.is-ios body { height: 100lvh; }
+    html.is-ios .app-shell { height: 100lvh; }
+    html.is-ios .metro-center-stage { --dial-size: clamp(118px, 18.8lvh, 178px); }
 
     /* 9. BPM Editor Popover & Tempo Ramp Bottom Sheet Polish */
     .bpm-editor {
@@ -5522,6 +5535,8 @@
        bit-for-bit what it was before Android support was added. */
     const UA_STR = navigator.userAgent || "";
     const IS_ANDROID = /Android/i.test(UA_STR);
+    const IS_IOS = /iPhone|iPad|iPod/i.test(UA_STR) || (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1);
+    if (IS_IOS) document.documentElement.classList.add("is-ios");
     let androidWeakHw = false;
     let androidBtCompMs = 0;
     const IS_INAPP_BROWSER = IS_ANDROID && /(MicroMessenger|QQ\/|QQBrowser|Weibo|DingTalk|AlipayClient|Aweme|bytedancewebview|baiduboxapp|Kwai)/i.test(UA_STR);
