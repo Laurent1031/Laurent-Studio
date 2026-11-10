@@ -3877,6 +3877,23 @@
     #tunerPanel { min-height: 0; }
     #tunerPanel .data-card { flex: 1 1 auto; min-height: 0; }
     #tunerPanel .trace-wrap { flex: 1 1 auto; min-height: 52px; }
+    /* ==== v16: metro bottom, Laurent's reference frame ====
+       Measured against the frame he approved: the lower half
+       is one settled block — preset strip, option tiles, wide
+       rows and START keep a fixed, even rhythm, and ALL of
+       the panel's free height gathers into a single calm gap
+       between the steppers and the preset strip. (space-between
+       smeared that space across every seam, so the layout
+       drifted with viewport height and the bottom block's
+       rhythm changed from screen to screen.) Single mode
+       only; dual keeps its compact spec. */
+    .workspace.mode-metro #metroPanel { justify-content: flex-start; }
+    .workspace.mode-metro #tempoPresetRow { margin-top: auto; }
+    /* The stage breathes a little deeper from the beat dots,
+       as in his frame; fixed, so it is identical at every
+       viewport height. */
+    .workspace.mode-metro .metro-center-stage { margin-top: 42px; }
+
     /* ==== v14: mic permission guide sheet ==== */
     .mic-guide-lead { font-size: 13px; line-height: 1.65; color: var(--text-secondary); margin: 0 0 12px; }
     .mic-guide-step { font-size: 13px; line-height: 1.5; color: var(--text-primary); margin: 0 0 8px; }
