@@ -1,9 +1,9 @@
-/* LAURENT · Acoustic Reference — offline support (v6).
+/* LAURENT · Acoustic Reference — offline support (v7).
    Documents are network-first (a fresh deploy always wins when
    online; the cache speaks when offline). Static assets and the
    entry document are pre-cached on install so first-visit offline
    launches work reliably. */
-const CACHE = "laurent-tuner-v6";
+const CACHE = "laurent-tuner-v7";
 const STATIC = [
   "./",
   "./index.html",

@@ -18,7 +18,7 @@
     .splash-core { display: flex; flex-direction: column; align-items: center; gap: 14px; transition: transform 0.34s ease; }
     .splash.bye .splash-core { transform: scale(0.97); }
     .splash-badge { position: relative; width: 74px; height: 74px; margin-bottom: 12px; border-radius: 20px; background: linear-gradient(145deg, #2f7bff, #0a5cff); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 34px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 18px 44px rgba(10, 92, 255, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.45); will-change: transform, opacity; }
-    .splash.play .splash-badge { animation: splashBadge 0.72s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .splash.play .splash-badge { animation: splashBadge 0.55s ease-out both; }
     .splash-ring { position: absolute; inset: 0; border-radius: 20px; border: 1.5px solid rgba(88, 156, 255, 0.55); pointer-events: none; will-change: transform, opacity; }
     .splash.play .splash-ring { animation: splashRing 0.98s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both; }
     .splash-word { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 25px; font-weight: 800; letter-spacing: 0.34em; margin-right: -0.34em; color: #eef3ff; will-change: transform, opacity; }
@@ -27,7 +27,7 @@
     .splash-sub { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.42em; margin-right: -0.42em; color: rgba(160, 178, 214, 0.85); will-change: transform, opacity; }
     .splash.play .splash-sub { animation: splashSub 0.62s ease 0.24s both; }
     [data-theme="light"] .splash-sub { color: rgba(70, 90, 130, 0.8); }
-    @keyframes splashBadge { from { opacity: 0; transform: scale(0.90) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes splashBadge { from { opacity: 0; } to { opacity: 1; } }
     @keyframes splashRing { from { opacity: 0.65; transform: scale(0.94); } to { opacity: 0; transform: scale(1.42); } }
     @keyframes splashWord { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes splashSub { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
@@ -48,7 +48,7 @@
     // so there is never a light->dark white flash before the splash screen.
     try {
       const s = JSON.parse(localStorage.getItem("laurent_settings_v6") || "null");
-      const mode = (s && s.themeMode) || "dark";
+      const mode = (s && s.themeMode) || "system";
       const light = mode === "light" || (mode === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
       const docEl = document.documentElement;
       docEl.setAttribute("data-theme", light ? "light" : "dark");
@@ -218,8 +218,8 @@
 
     .glass-card {
       background: var(--glass-surface);
-      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat, 180%));
-      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat, 180%));
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat, 180%)) brightness(var(--glass-bri, 1));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat, 180%)) brightness(var(--glass-bri, 1));
       border: 1px solid var(--glass-border);
       box-shadow:
         var(--glass-shadow),
@@ -307,6 +307,7 @@
       width: 100%;
       height: 100vh;
       height: 100dvh;
+      height: 100%;
       max-width: 1280px;
       margin: 0 auto;
       display: flex;
@@ -928,9 +929,25 @@
       position: relative;
       z-index: 1;
     }
-    .beat-pillar.pulsing[data-level="3"] .beat-dot {
-      background: var(--ok);
+    /* Beat-dot light envelope: the lit colour rides an overlay whose
+       opacity is aliased to the same --pulse envelope as the light
+       column (fast strike, tempo-shaped decay), so the dot brightens
+       and dims smoothly instead of snapping with the .pulsing class —
+       CSS cannot interpolate gradients, which is why the old class
+       swap popped. --lit aliases --pulse per pillar; no extra JS. */
+    .beat-pillar { --lit: var(--pulse, 0); }
+    .beat-dot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      opacity: var(--lit, 0);
+      pointer-events: none;
     }
+    .beat-pillar[data-level="3"] .beat-dot::after { background: linear-gradient(180deg, #3ce068 0%, #28b850 100%); }
+    .beat-pillar[data-level="2"] .beat-dot::after,
+    .beat-pillar[data-level="1"] .beat-dot::after { background: linear-gradient(180deg, #2b95ff 0%, #0a84ff 100%); }
+    .beat-num { position: relative; z-index: 1; }
 
     .beat-num {
       font-size: 11px;
@@ -1114,6 +1131,23 @@
 
     /* ==================== IMMERSIVE LANDSCAPE TUNER (极简沉浸式调音 · 音准全屏绿) ==================== */
     .immersive-tuner-overlay {
+      /* The immersive stage is always dark, whatever the app theme:
+         pin the dark token set inside the overlay so its glass and
+         text stay readable when the app runs in light theme (the
+         root vars are theme-driven and set inline by the glass
+         engine; the overlay's own values win for its subtree). */
+      --glass-surface: rgba(28, 28, 30, 0.55);
+      --glass-elevated: rgba(44, 44, 46, 0.68);
+      --glass-pill-bg: rgba(42, 42, 44, 0.36);
+      --glass-border: rgba(255, 255, 255, 0.14);
+      --glass-highlight: rgba(255, 255, 255, 0.26);
+      --text-primary: #f5f5f7;
+      --text-secondary: rgba(235, 235, 245, 0.6);
+      --text-muted: rgba(235, 235, 245, 0.34);
+      --accent-soft: rgba(10, 132, 255, 0.18);
+      --ok-soft: rgba(48, 209, 88, 0.2);
+      --needle-color: #f5f5f7;
+      --dial-track: rgba(255, 255, 255, 0.12);
       position: fixed;
       inset: 0;
       z-index: 85;
@@ -1194,7 +1228,7 @@
       .imm-center {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto;
-        align-content: center;
+        align-content: space-evenly;
         gap: 6px;
       }
       .imm-gauge-box { height: min(320px, 44vh); max-height: none; }
@@ -2121,8 +2155,8 @@
       backdrop-filter: none;
     }
     .glass-card {
-      -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(var(--glass-sat, 180%)) brightness(1.03);
-      backdrop-filter: blur(var(--glass-blur, 14px)) saturate(var(--glass-sat, 180%)) brightness(1.03);
+      -webkit-backdrop-filter: blur(var(--glass-blur, 14px)) saturate(var(--glass-sat, 180%)) brightness(var(--glass-bri, 1.03));
+      backdrop-filter: blur(var(--glass-blur, 14px)) saturate(var(--glass-sat, 180%)) brightness(var(--glass-bri, 1.03));
     }
     [data-theme="light"] .seg-control {
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.10));
@@ -4021,9 +4055,6 @@
     .glass-press {
       transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
     }
-    .glass-press::after {
-      display: none !important;
-    }
     button.is-pressing,
     .seg-btn.is-pressing,
     .mini-chip.is-pressing,
@@ -4057,6 +4088,16 @@
       background: rgba(255, 255, 255, 0.88);
       border: 1px solid rgba(15, 23, 42, 0.09);
       box-shadow: inset 0 1px 0 #ffffff, 0 2px 6px rgba(15, 23, 42, 0.05);
+    }
+    /* The immersive stage is always dark: its pills keep the dark
+       glass even when the app theme is light (white pills with
+       white text were unreadable there). */
+    [data-theme="light"] .immersive-tuner-overlay .imm-pill,
+    [data-theme="light"] .immersive-tuner-overlay .imm-btn {
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: none;
+      color: #ffffff;
     }
     .mini-chip.active, .str-chip.active, .fav-chip.active {
       background: linear-gradient(180deg, rgba(10, 132, 255, 0.38) 0%, rgba(10, 132, 255, 0.22) 100%) !important;
@@ -4192,18 +4233,8 @@
       border: 1px solid rgba(140, 200, 255, 0.45);
       box-shadow: 0 4px 12px rgba(10, 132, 255, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.35);
     }
-    .beat-pillar.pulsing[data-level="3"] .beat-dot {
-      background: linear-gradient(180deg, #3ce068 0%, #28b850 100%) !important;
-      border-color: rgba(160, 250, 185, 0.65) !important;
-      box-shadow: 0 0 16px rgba(48, 209, 88, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
-    }
-    .beat-pillar.pulsing[data-level="2"] .beat-dot,
-    .beat-pillar.pulsing[data-level="1"] .beat-dot {
-      background: linear-gradient(180deg, #2b95ff 0%, #0a84ff 100%) !important;
-      border-color: rgba(150, 210, 255, 0.6) !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 14px rgba(10, 132, 255, 0.42) !important;
-    }
+    /* .pulsing no longer recolours the dot: the lit state is the
+       --lit overlay envelope defined with the beat orbs above. */
     .bento-slot > .menu-row {
       background: rgba(24, 30, 44, 0.66) !important;
       border: 1px solid rgba(255, 255, 255, 0.10) !important;
@@ -4245,9 +4276,6 @@
     }
 
     /* 8. High-End Studio Patronage & WeChat QR Modals (Zero Emoji, Untouched Original QRs) */
-    #pageGlow {
-      display: none !important;
-    }
     /* Eliminate redundant nested backdrop-filters inside already-blurred panels for 120fps Android/iOS smoothness */
     .icon-btn,
     .mini-chip,
@@ -4496,14 +4524,7 @@
       letter-spacing: 0.02em;
       line-height: 1.35;
     }
-    .patronage-steps {
-      font-size: 11px;
-      color: var(--text-secondary);
-      letter-spacing: 0.02em;
-      line-height: 1.5;
-      text-align: center;
-      padding: 0 8px;
-    }
+
 
     /* 9. Universal Multi-Device Responsive Auto-Adaptation (Small Phones, Tall Phones, Foldables, Tablets, Landscape) */
     .app-shell {
@@ -5373,7 +5394,6 @@
             <button class="icon-btn qr-action-primary" id="btnSavePatronageQr">添加到相册</button>
             <button class="icon-btn qr-action-secondary" id="btnJumpWechatFromPatronage">打开微信</button>
           </div>
-          <div class="patronage-steps">步骤：保存图片 → 打开微信 → 右上角 ＋ → 扫一扫 → 相册 → 选刚保存的二维码</div>
         </div>
       </div>
     </div>
@@ -5406,7 +5426,6 @@
             <button class="icon-btn qr-action-primary" id="btnSaveWechatQr">添加到相册</button>
             <button class="icon-btn qr-action-secondary" id="btnJumpWechatFromContact">复制微信号并打开微信</button>
           </div>
-          <div class="patronage-steps">步骤：保存图片 → 打开微信 → 右上角 ＋ → 扫一扫 → 相册 → 选刚保存的二维码</div>
         </div>
       </div>
     </div>
@@ -5473,7 +5492,7 @@
     // app is still idle — never mid-gesture, never while tuning.
     // (The old mid-flight sampler was removed for pacing; this
     // settles at most once, before first real use.)
-    window.addEventListener("DOMContentLoaded", () => {
+    window.addEventListener("load", () => {
       let frames = 0;
       let winStart = performance.now();
       const bootStart = winStart;
@@ -5501,19 +5520,24 @@
         frames++;
         if (now - winStart >= 1000) {
           const fps = (frames * 1000) / (now - winStart);
-          const threshold = IS_ANDROID ? 45 : 38;
+          const threshold = IS_ANDROID ? 45 : 30;
           let micOn = false;
           try { micOn = !!(typeof state !== "undefined" && state && state.micActive); } catch {}
           if (fps < threshold && !micOn) slowWins++;
           else slowWins = 0;
           frames = 0;
           winStart = now;
-          if (slowWins >= 2) { settled = true; stepDown(); return; }
+          if (slowWins >= (IS_ANDROID ? 2 : 3)) { settled = true; stepDown(); return; }
           if (now - bootStart > 6000) { settled = true; return; }
         }
         requestAnimationFrame(tick);
       };
-      requestAnimationFrame(tick);
+      // Start only once the app has fully booted and the splash has
+      // landed: sampling during cold start measured parse/init jank
+      // and dropped flagship iPhones into lite mode (ambient
+      // background, pulses and glow all switched off) — the device
+      // was never actually slow.
+      setTimeout(() => requestAnimationFrame(tick), 1200);
     });
 
     /* =========================================================================
@@ -5649,7 +5673,7 @@
       savedMode: null,
       hapticsOn: true,
       soundsOn: true,
-      themeMode: "dark",
+      themeMode: "system",
       glassAlpha: 50,
       customBgDataUrl: "",
       bgColor: "",
@@ -7233,19 +7257,44 @@
       // smooth aurora background — nothing detailed to blur, and the
       // tint sits close to the backdrop colour.)
       const t = Math.max(0, Math.min(1, (a - 0.08) / (0.96 - 0.08)));
-      if (effectiveTheme === "light") {
-        root.setProperty("--glass-surface", `rgba(255, 255, 255, ${Math.max(0.08, Math.min(0.96, a))})`);
-        root.setProperty("--glass-elevated", `rgba(255, 255, 255, ${Math.min(0.98, a + 0.14)})`);
-        root.setProperty("--glass-pill-bg", `rgba(120, 120, 128, ${(0.04 + t * 0.17).toFixed(3)})`);
-        root.setProperty("--glass-border", `rgba(60, 60, 67, ${(0.06 + t * 0.14).toFixed(3)})`);
+      if (IS_ANDROID) {
+        // Android read clearly with this mapping already (Laurent
+        // confirmed it there) — keep it exactly as it was.
+        if (effectiveTheme === "light") {
+          root.setProperty("--glass-surface", `rgba(255, 255, 255, ${Math.max(0.08, Math.min(0.96, a))})`);
+          root.setProperty("--glass-elevated", `rgba(255, 255, 255, ${Math.min(0.98, a + 0.14)})`);
+          root.setProperty("--glass-pill-bg", `rgba(120, 120, 128, ${(0.04 + t * 0.17).toFixed(3)})`);
+          root.setProperty("--glass-border", `rgba(60, 60, 67, ${(0.06 + t * 0.14).toFixed(3)})`);
+        } else {
+          root.setProperty("--glass-surface", `rgba(28, 28, 30, ${Math.max(0.06, Math.min(0.92, a * 0.95))})`);
+          root.setProperty("--glass-elevated", `rgba(44, 44, 46, ${Math.min(0.97, a + 0.10)})`);
+          root.setProperty("--glass-pill-bg", `rgba(12, 15, 23, ${(0.22 + t * 0.52).toFixed(3)})`);
+          root.setProperty("--glass-border", `rgba(255, 255, 255, ${(0.05 + t * 0.11).toFixed(3)})`);
+        }
+        root.setProperty("--glass-blur", `${Math.round(31 - a * 24)}px`);
+        root.setProperty("--glass-sat", `${Math.round(200 - t * 60)}%`);
+        root.setProperty("--glass-bri", "1");
       } else {
-        root.setProperty("--glass-surface", `rgba(28, 28, 30, ${Math.max(0.06, Math.min(0.92, a * 0.95))})`);
-        root.setProperty("--glass-elevated", `rgba(44, 44, 46, ${Math.min(0.97, a + 0.10)})`);
-        root.setProperty("--glass-pill-bg", `rgba(12, 15, 23, ${(0.22 + t * 0.52).toFixed(3)})`);
-        root.setProperty("--glass-border", `rgba(255, 255, 255, ${(0.05 + t * 0.11).toFixed(3)})`);
+        // iOS / desktop, amplified per platform (Laurent: on iPhone
+        // the same mapping was barely visible): near-full-range
+        // surface alpha, a much wider blur and saturation swing, and
+        // a backdrop-brightness bleed that rises as the glass gets
+        // more transparent — both slider ends are unmistakable.
+        if (effectiveTheme === "light") {
+          root.setProperty("--glass-surface", `rgba(255, 255, 255, ${(0.10 + t * 0.86).toFixed(3)})`);
+          root.setProperty("--glass-elevated", `rgba(255, 255, 255, ${Math.min(0.99, 0.22 + t * 0.77).toFixed(3)})`);
+          root.setProperty("--glass-pill-bg", `rgba(120, 120, 128, ${(0.03 + t * 0.20).toFixed(3)})`);
+          root.setProperty("--glass-border", `rgba(60, 60, 67, ${(0.05 + t * 0.16).toFixed(3)})`);
+        } else {
+          root.setProperty("--glass-surface", `rgba(28, 28, 30, ${(0.05 + t * 0.90).toFixed(3)})`);
+          root.setProperty("--glass-elevated", `rgba(44, 44, 46, ${Math.min(0.99, 0.15 + t * 0.84).toFixed(3)})`);
+          root.setProperty("--glass-pill-bg", `rgba(12, 15, 23, ${(0.16 + t * 0.62).toFixed(3)})`);
+          root.setProperty("--glass-border", `rgba(255, 255, 255, ${(0.04 + t * 0.17).toFixed(3)})`);
+        }
+        root.setProperty("--glass-blur", `${Math.round(38 - t * 33)}px`);
+        root.setProperty("--glass-sat", `${Math.round(215 - t * 90)}%`);
+        root.setProperty("--glass-bri", (1.16 - t * 0.16).toFixed(3));
       }
-      root.setProperty("--glass-blur", `${Math.round(31 - a * 24)}px`);
-      root.setProperty("--glass-sat", `${Math.round(200 - t * 60)}%`);
       drawTunerGauge();
     }
 
@@ -7258,7 +7307,7 @@
         const s = JSON.parse(safeStorageGet(STORAGE_KEYS.SETTINGS) || "null");
         if (s) {
           state.lang = s.lang || "zh-TW";
-          state.themeMode = s.themeMode || "dark";
+          state.themeMode = s.themeMode || "system";
           state.savedMode = s.mode || null;
           state.hapticsOn = s.hapticsOn !== false;
           state.soundsOn = s.soundsOn !== false;
@@ -8564,8 +8613,12 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
           ctx.globalAlpha = 1;
         }
       }
-      /* Draw once statically while idle so background CPU/GPU is 0% and modals never re-blur */
-      idleWaveOn = false;
+      /* Keep the idle wave drifting while the mic is off (Laurent
+         asked for it back; a perf pass had paused it to one static
+         frame). One small canvas at ~30fps; no backdrop filter is
+         involved, so modals never re-blur. Hidden canvas (metro
+         mode) just polls slowly. */
+      setTimeout(() => requestAnimationFrame(idleWaveTick), cv && cv.clientWidth ? 33 : 240);
     }
     function startIdleWave() {
       if (idleWaveOn || state.micActive) return;
@@ -11132,6 +11185,11 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
       if (!el) { activePressEl = null; return; }
       activePressEl = el;
       el.classList.add("glass-press", "is-pressing");
+      const pr = el.getBoundingClientRect();
+      if (pr.width > 0 && pr.height > 0) {
+        el.style.setProperty("--px", (((e.clientX - pr.left) / pr.width) * 100).toFixed(1) + "%");
+        el.style.setProperty("--py", (((e.clientY - pr.top) / pr.height) * 100).toFixed(1) + "%");
+      }
     }, { passive: true });
     const clearGlassPress = () => {
       if (activePressEl) {
@@ -11142,7 +11200,7 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
 
     // Page-wide liquid light: wherever the finger presses, the glass
     // surface itself catches the light and the glow trails the finger.
-    const pageGlowEl = null;
+    const pageGlowEl = document.getElementById("pageGlow");
     if (pageGlowEl) {
       const setGlow = (x, y) => {
         pageGlowEl.style.transform = `translate3d(${(x - 170).toFixed(0)}px, ${(y - 170).toFixed(0)}px, 0)`;
