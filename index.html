@@ -3829,6 +3829,15 @@
     @media (min-height: 860px) {
       .beat-matrix { height: 88px; }
     }
+    /* Metro composition at every aspect ratio: the stage no
+       longer swallows all the spare height (that is what made
+       the page look stretched out of shape on tall screens).
+       The panel distributes leftover space evenly between its
+       sections — the same rhythm the tuner page uses — and the
+       stage keeps only the height its content needs, with the
+       dial group centred inside it. */
+    #metroPanel { justify-content: space-between; }
+    .metro-center-stage { flex: 0 1 auto; }
 
     /* 9. BPM Editor Popover & Tempo Ramp Bottom Sheet Polish */
     .bpm-editor {
@@ -11484,6 +11493,20 @@ const I18N_PREFIXES = ["已切换纯律（主音", "确定删除自订乐器「"
     // Offline support: register only on HTTPS (the deployed
     // site); a missing sw.js or a local preview is a no-op.
     if ("serviceWorker" in navigator && location.protocol === "https:") {
+      /* If a newer service worker takes control while this page is
+         open, reload once so the fresh build actually reaches the
+         screen (Laurent hit a stale tab that kept showing the old
+         version after an update). The flag keeps it to one reload
+         per session, and a first-ever install never reloads. */
+      const hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!hadController) return;
+        try {
+          if (sessionStorage.getItem("swReloaded")) return;
+          sessionStorage.setItem("swReloaded", "1");
+        } catch (err) { /* private mode: reload anyway, once per load */ }
+        location.reload();
+      });
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js").catch(() => {});
       });
